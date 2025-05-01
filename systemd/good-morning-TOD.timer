@@ -1,0 +1,9 @@
+[Unit]
+Description=Disable Night Light Script At 9AM
+
+[Timer]
+OnCalendar=*-*-* 09:00:00
+Unit=good-night.service
+
+[Install]
+WantedBy=default.target

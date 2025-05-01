@@ -1,0 +1,9 @@
+[Unit]
+Description=Turn On Night Light
+After=graphical.target
+Wants=graphical.target
+
+[Service]
+Type=oneshot
+Environment=DISPLAY=:1
+ExecStart=/home/trevorgrabham/bin/good-night.sh

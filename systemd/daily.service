@@ -1,0 +1,6 @@
+[Unit]
+Description=Run Our Daily Script
+
+[Service]
+Type=oneshot
+ExecStart=/home/trevorgrabham/bin/daily.sh

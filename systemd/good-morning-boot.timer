@@ -1,0 +1,11 @@
+[Unit]
+Description=Disable Night Light Script At 9AM
+
+[Timer]
+OnStartupSec=15s
+AccuracySec=5s
+Persistent=false
+Unit=good-morning.service
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Night Light Script At 9PM
+
+[Timer]
+OnStartupSec=15s
+AccuracySec=5s
+Persistent=false
+Unit=good-night.service
+
+[Install]
+WantedBy=default.target

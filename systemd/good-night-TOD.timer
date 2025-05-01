@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Night Light Script At 9PM
+
+[Timer]
+OnCalendar=*-*-* 21:00:00
+Unit=good-night.service
+
+[Install]
+WantedBy=default.target

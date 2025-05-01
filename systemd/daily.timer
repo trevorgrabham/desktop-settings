@@ -1,0 +1,10 @@
+[Unit]
+Description=Runs Our Daily Script
+
+[Timer]
+OnStartupSec=1min
+AccuracySec=30s
+Persistent=false
+
+[Install]
+WantedBy=default.target
