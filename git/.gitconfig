@@ -1,0 +1,9 @@
+# This is Git's per-user configuration file.
+[user]
+# Please adapt and uncomment the following lines:
+	name = Trevor Grabham
+	email = trevarus1997@gmail.com
+[core]
+	editor = nvim
+[init]
+	defaultBranch = main

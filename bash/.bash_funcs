@@ -1,0 +1,494 @@
+# helper function
+# turns on extglob and registers the _cleanup_extglob function
+_setup_extglob() {
+  shopt -q extglob
+  extglob_was_set="$?"
+  shopt -s extglob
+
+  if [ "$extglob_was_set" -ne 0 ]; then
+    _cleanup_extglob() {
+      shopt -u extglob
+    }
+  else
+    _cleanup_extglob() { :; }
+  fi
+
+}
+
+# returns a time string in a predictable format or "" on error
+#  
+# if multiple units are specified, they can be read using
+#   IFS=',' read -r -a ARRAY <<< OUTPUT
+#
+# "[N Days],[N Hours],[N Minutes],[N Seconds]"
+# "NN:NN:NN (AM|PM)"
+parsetime() {
+  acceptable_secs=("s" "S" "sec" "Sec" "SEC" "secs" "Secs" "SECS" "second" "Second" "SECOND" "seconds" "Seconds" "SECONDS")
+  acceptable_mins=("m" "M" "min" "MIN" "Min" "mins" "MINS" "Mins" "minute" "MINUTE" "Minute" "minutes" "MINUTES" "Minutes")
+  acceptable_hours=("h" "H" "hr" "HR" "Hr" "hrs" "HRS" "Hrs" "hour" "HOUR" "Hour" "hours" "HOURS" "Hours")
+  acceptable_days=("d" "D" "day" "Day" "DAY" "days" "Days" "DAYS")
+
+  _setup_extglob
+
+  if [ $# -eq 1 ]; then
+    time_string="$1"
+  elif [ $# -eq 2 ]; then
+    time_string="$1$2"
+  else 
+    _cleanup_extglob
+    echo "parsetime: usage: parsetime AMOUNT(UNIT| UNIT)" >&2
+    printf ""
+    return 1
+  fi
+
+  case "$time_string" in 
+    +([0-9])d+([0-9])h+([0-9])m+([0-9])s |\
+    +([0-9])D+([0-9])H+([0-9])M+([0-9])S )
+                    days="${time_string%%[dD]*}"
+                    rest="${time_string##*[dD]}"
+                    hours="${rest%%[hH]*}"
+                    rest="${rest##*[hH]}"
+                    mins="${rest%%[mM]*}"
+                    rest="${rest##*[mM]}"
+                    secs="${rest%%[sS]*}"
+                    printf "%s Days,%s Hours,%s Minutes,%s Seconds" "$days" "$hours" "$mins" "$secs"
+                    ;;
+    +([0-9])d+([0-9])h+([0-9])m |\
+    +([0-9])D+([0-9])H+([0-9])M )
+                    days="${time_string%%[dD]*}"
+                    rest="${time_string##*[dD]}"
+                    hours="${rest%%[hH]*}"
+                    rest="${rest##*[hH]}"
+                    mins="${rest%%[mM]*}"
+                    printf "%s Days,%s Hours,%s Minutes" "$days" "$hours" "$mins"
+                    ;;
+    +([0-9])h+([0-9])m+([0-9])s |\
+    +([0-9])H+([0-9])M+([0-9])S )
+                    hours="${time_string%%[hH]*}"
+                    rest="${time_string##*[hH]}"
+                    mins="${rest%%[mM]*}"
+                    rest="${rest##*[mM]}"
+                    secs="${rest%%[sS]*}"
+                    printf "%s Hours,%s Minutes,%s Seconds" "$hours" "$mins" "$secs"
+                    ;;
+    +([0-9])d+([0-9])h |\
+    +([0-9])D+([0-9])H )
+                    days="${time_string%%[dD]*}"
+                    rest="${time_string##*[dD]}"
+                    hours="${rest%%[hH]*}"
+                    printf "%s Days,%s Hours" "$days" "$hours"
+                    ;;
+    +([0-9])h+([0-9])m |\
+    +([0-9])H+([0-9])M )
+                    hours="${time_string%%[hH]*}"
+                    rest="${time_string##*[hH]}"
+                    mins="${rest%%[mM]*}"
+                    printf "%s Hours,%s Minutes" "$hours" "$mins"
+                    ;;
+    +([0-9])m+([0-9])s |\
+    +([0-9])M+([0-9])S )
+                    mins="${time_string%%[mM]*}"
+                    rest="${time_string##*[mM]}"
+                    secs="${rest%%[sS]*}"
+                    printf "%s Minutes,%s Seconds" "$mins" "$secs"
+                    ;;
+    +([0-9])[sS]* )
+                    suffix="${time_string##+([0-9])}"
+                    illegal_suffix=true
+                    for acceptable_suffix in "${acceptable_secs[@]}"; do
+                      if [ "$acceptable_suffix" = "$suffix" ]; then
+                        illegal_suffix=false
+                        break
+                      fi
+                    done
+                    if [ "$illegal_suffix" = "true" ]; then
+                      _cleanup_extglob
+                      printf "" 
+                      echo "parsetime: unable to read unit $suffix" >&2
+                      return 1
+                    fi
+                    prefix="${time_string%%+([a-zA-Z])}"
+                    printf "%s Seconds" "$prefix"
+                    ;;
+    +([0-9])[mM]* )
+                    suffix="${time_string##+([0-9])}"
+                    illegal_suffix=true
+                    for acceptable_suffix in "${acceptable_mins[@]}"; do
+                      if [ "$acceptable_suffix" = "$suffix" ]; then
+                        illegal_suffix=false
+                        break
+                      fi
+                    done
+                    if [ "$illegal_suffix" = "true" ]; then
+                      _cleanup_extglob
+                      printf "" 
+                      echo "parsetime: unable to read unit $suffix" >&2
+                      return 1
+                    fi
+                    prefix="${time_string%%+([a-zA-Z])}"
+                    printf "%s Minutes" "$prefix"
+                    ;;
+    +([0-9])[hH]* )
+                    suffix="${time_string##+([0-9])}"
+                    illegal_suffix=true
+                    for acceptable_suffix in "${acceptable_hours[@]}"; do
+                      if [ "$acceptable_suffix" = "$suffix" ]; then
+                        illegal_suffix=false
+                        break
+                      fi
+                    done
+                    if [ "$illegal_suffix" = "true" ]; then
+                      _cleanup_extglob
+                      printf "" 
+                      echo "parsetime: unable to read unit $suffix" >&2
+                      return 1
+                    fi
+                    prefix="${time_string%%+([a-zA-Z])}"
+                    printf "%s Hours" "$prefix"
+                    ;;
+    +([0-9])[dD]* )
+                    suffix="${time_string##+([0-9])}"
+                    illegal_suffix=true
+                    for acceptable_suffix in "${acceptable_days[@]}"; do
+                      if [ "$acceptable_suffix" = "$suffix" ]; then
+                        illegal_suffix=false
+                        break
+                      fi
+                    done
+                    if [ "$illegal_suffix" = "true" ]; then
+                      _cleanup_extglob
+                      printf "" 
+                      echo "parsetime: unable to read unit $suffix" >&2
+                      return 1
+                    fi
+                    prefix="${time_string%%+([a-zA-Z])}"
+                    printf "%s Days" "$prefix"
+                    ;;
+    ?([0-9])[0-9]:[0-9][0-9]?(:[0-9][0-9]) )
+                    suffix="AM"
+                    hours="${time_string%%:*}"
+                    rest="${time_string#$hours}"
+                    hours="${hours#0}"
+                    if [ "$hours" = "" ]; then
+                      hours="0"
+                    fi
+                    if [ $hours -eq 12 ]; then
+                      suffix="PM"
+                    elif [ $hours -eq 0 ]; then
+                      hours="12"
+                    elif [ $hours -ge 13 ]; then 
+                      hours=$(($hours-12))
+                      suffix="PM"
+                    fi
+                    case "$time_string" in 
+                      ?([0-9])[0-9]:[0-9][0-9]:[0-9][0-9]* )
+                          printf "%s %s" "$hours$rest" "$suffix"
+                          ;;
+                      * )
+                          printf "%s %s" "$hours$rest:00" "$suffix"
+                    esac
+                    ;;
+    ?([0-9])[0-9]:[0-9][0-9]?(:[0-9][0-9])@(am|AM|Am|pm|PM|Pm) )
+                    prefix="${time_string%%+([a-zA-Z])}"
+                    suffix="${time_string#$prefix}"
+                    case "$suffix" in 
+                      [aA][mM] )
+                                  suffix="AM"
+                                  ;;
+                      [pP][mM] )
+                                  suffix="PM"
+                    esac
+                    case "$time_string" in 
+                      ?([0-9])[0-9]:[0-9][0-9]:[0-9][0-9]* )
+                          printf "%s %s" "$prefix" "$suffix"
+                          ;;
+                      * )
+                          printf "%s %s" "$prefix:00" "$suffix"
+                    esac
+                    ;;
+    * )
+                    _cleanup_extglob
+                    printf ""
+                    echo "parsetime: unable to recognize format $@" >&2
+                    return 1
+  esac
+}
+# uses the `at` deamon to set a timer.
+# 
+# default units are minutes if not specified
+timer() {
+  usage="usage:\ttimer [TIME] [--stop|-s]"
+  command='notify-send "Timer done!" && paplay /usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga'
+  prefix=
+  suffix=
+  combined=
+  stopped_timer=false
+
+  if [ $# -gt 3 ]; then
+    echo -e "timer:\ttoo many arguments\n$usage" >&2
+    return 1
+  fi
+
+  _setup_extglob
+
+  for arg; do
+    case "$arg" in 
+# stop flag
+      -s | --stop )     
+                                        if [ ! -f ~/.timer_data ]; then 
+                                          echo -e "timer:\tno timer currently running" >&2
+                                        else
+                                          timer_num="$(cat ~/.timer_data)"
+                                          atrm "$timer_num" &> /dev/null
+                                          if [ "$?" -eq 0 ]; then
+                                            stopped_timer=true
+                                            echo "timer #$timer_num stopped"
+                                          fi
+                                          rm ~/.timer_data
+                                        fi 
+                                        ;;
+# timer quantity
+      +([0-9]) | \
+      ?([0-9])[0-9]:[0-9][0-9]?(:[0-9][0-9]) )
+                                        if [ ${#prefix} -gt 0 ]; then
+                                          echo -e "timer:\tunrecognized format $@\n$usage" >&2
+                                          _cleanup_extglob 
+                                          return 1
+                                        fi
+                                        prefix="$arg"
+                                        ;;
+# timer units
+      +([a-zA-Z]) )   
+                                        if [ ${#suffix} -gt 0 ]; then
+                                          echo -e "timer:\tunrecognized format $@\n$usage" >&2
+                                          _cleanup_extglob 
+                                          return 1
+                                        fi
+                                        suffix="$arg"
+                                        ;;
+# quantity and units combined
+      ?(+([0-9])[dD])?(+([0-9])[hH])?(+([0-9])[mM])?(+([0-9])[sS]) | \
+      ?([0-9])[0-9]:[0-9][0-9]?(:[0-9][0-9])[aApP][mM] )   
+                                        if [ ${#combined} -gt 0 ]; then
+                                          echo -e "timer:\tunrecognized format $@\n$usage" >&2
+                                          _cleanup_extglob 
+                                          return 1
+                                        fi
+                                        combined="$arg"
+                                        ;;
+      * )
+                                        echo -e "timer:\tunrecognized argument $arg\n$usage" >&2
+                                        _cleanup_extglob
+                                        return 1
+    esac
+  done
+
+  if [[ ${#prefix} -eq 0 && ${#combined} -eq 0 && "$stopped_timer" = "true" ]]; then
+    _cleanup_extglob
+    return 0
+  fi
+
+  if [[ ${#suffix} -eq 0 && ${#combined} -eq 0 ]]; then
+    case "$prefix" in 
+      +([0-9]) )
+                                        suffix="m"
+                                        ;;
+      ?([0-9])[0-9]:[0-9][0-9]?(:[0-9][0-9]) )
+                                        read user_hours user_minutes rest <<< $(echo $prefix | sed 's/\([0-9]\+\):\([0-9]\+\)\(.*\)/\1 \2 \3/')
+                                        read curr_hours curr_minutes am_pm <<< $(date | sed 's/.*\([0-9]\+\):\([0-9]\+\):.* \([AP]M\).*/\1 \2 \3/')
+
+                                        # parse leading '0's
+                                        user_hours="${user_hours#0}"
+                                        if [ "$user_hours" = "" ]; then
+                                          user_hours=0
+                                        fi
+                                        curr_hours="${curr_hours#0}"
+                                        if [ "$curr_hours" = "" ]; then
+                                          curr_hours=0
+                                        fi
+                                        user_minutes="${user_minutes#0}"
+                                        if [ "$user_minutes" = "" ]; then
+                                          user_minutes=0
+                                        fi
+                                        curr_minutes="${curr_minutes#0}"
+                                        if [ "$curr_minutes" = "" ]; then
+                                          curr_minutes=0
+                                        fi
+                                  
+                                        # correct for midnight and noon
+                                        if [[ "$am_pm" = "PM" && "$curr_hours" -ne 12 ]]; then curr_hours=$(("$curr_hours" + 12)); fi
+                                        if [[ "$am_pm" = "AM" && "$curr_hours" -eq 12 ]]; then curr_hours=0; fi
+                                  
+                                        user_min_since_midnight=$((60*"$user_hours" + "$user_minutes"))
+                                        curr_min_since_midnight=$((60*"$curr_hours" + "$curr_minutes"))
+                                        if [ "$user_minutes" = "0" ]; then
+                                          user_minutes="00"
+                                        fi
+                                        if [ "$user_hours" = "0" ]; then
+                                          prefix="12:$user_minutes$rest"
+                                        fi
+
+                                        # if the user time is exactly 12:00 then we just need to know whether the current time is past noon or not
+                                        if [ $user_min_since_midnight -eq $((12*60)) ]; then
+                                          if [ "$curr_min_since_midnight" -ge $((12*60)) ]; then 
+                                            suffix="AM"
+                                          else 
+                                            suffix="PM"
+                                          fi
+                                        elif [ $user_hours -gt 12 ]; then
+                                          user_hours=$(($user_hours%12))
+                                          prefix="$user_hours:$user_minutes$rest"
+                                          suffix="PM"
+                                        elif [[ $curr_min_since_midnight -lt $user_min_since_midnight || $curr_min_since_midnight -ge $(($user_min_since_midnight + (12*60))) ]]; then
+                                          suffix="AM"
+                                        else
+                                          suffix="PM"
+                                        fi
+                                        ;;
+
+      * )
+                                        echo -e "timer:\tunrecognized format $@\n$usage" >&2
+                                        _cleanup_extglob 
+                                        return 1
+    esac
+  fi
+
+  if [ ${#combined} -eq 0 ]; then
+    combined="$prefix$suffix"
+  fi
+  parsed="$(parsetime "$combined")"
+
+  case "$parsed" in
+    *:* )
+                                        # if we were given a specific time, then we just need to remove the seconds from the time and give it to 'at'
+                                        parsed="$(echo "$parsed" | sed 's/:[0-9][0-9] / /')"
+                                        timer_results="$(echo "$command" | at "$parsed" 2>&1 )"
+                                        if [ $? -ne 0 ]; then
+                                          echo -e "timer:\tunable to start timer for $parsed\n$timer_results\n$usage" >&2
+                                          _cleanup_extglob
+                                          return 1
+                                        fi
+                                        echo "$timer_results" | grep '^job' | sed 's/^[^0-9]*\([0-9]\+\).*/\1/' > ~/.timer_data
+                                        time_diff=$(($(date -d "$parsed" +%s) - $(date +%s)))
+                                        if [ $time_diff -lt 0 ]; then
+                                          time_diff=$((time_diff + 86400))
+                                        fi
+
+                                        hour_delta=$((time_diff/3600))
+                                        hour_string=
+                                        if [ $hour_delta -gt 0 ]; then
+                                          hour_string="${hour_delta}h "
+                                        fi
+                                        min_delta=$((time_diff%3600/60))
+                                        min_string=
+                                        if [ $min_delta -gt 0 ]; then
+                                          min_string="${min_delta}m "
+                                        fi
+                                        sec_delta=$((time_diff%60))
+                                        sec_string=
+                                        if [ $sec_delta -gt 0 ]; then
+                                          sec_string="${sec_delta}s "
+                                        fi
+                                        echo "Started a $hour_string$min_string${sec_string}timer (#$(cat ~/.timer_data))"
+                                        ;;
+    +(+([0-9]) [SMHD]*) )               
+                                        # split the duration by its units, and then convert them and collect them into total_mins
+                                        total_mins=0
+                                        IFS=',' read -r -a durs <<< "$parsed"
+
+                                        for dur in "${durs[@]}"; do
+                                          case "$dur" in 
+                                            +([0-9])\ Days )       
+                                                                  dur="${dur% *}"
+                                                                  total_mins=$(($total_mins + ($dur * 1440)))
+                                                                  ;;
+                                            +([0-9])\ Hours )
+                                                                  dur="${dur% *}"
+                                                                  total_mins=$(($total_mins + ($dur * 60)))
+                                                                  ;;
+                                            +([0-9])\ Minutes )
+                                                                  dur="${dur% *}"
+                                                                  total_mins=$(($total_mins + $dur))
+                                                                  ;;
+                                            +([0-9])\ Seconds )
+                                                                  dur="${dur% *}"
+                                                                  if [ $dur -ge 30 ]; then
+                                                                    total_mins=$(($total_mins + 1))
+                                                                  fi
+                                                                  ;;
+                                            * ) 
+                                                                  echo -e "We shouldn't have gotten to this point\n$usage" >&2
+                                                                  clean_extglob 
+                                                                  return 1
+                                          esac
+                                        done
+
+                                        if [ $total_mins -le 0 ]; then
+                                          echo -e "timer:\tunable to start timer for $parsed, must be at least 1m in the future\n$usage" >&2
+                                          _cleanup_extglob
+                                          return 1
+                                        fi
+                                        
+                                        timer_results="$(echo "$command" | at "NOW + $total_mins MINUTES" 2>&1 )"
+                                        if [ $? -ne 0 ]; then
+                                          echo -e "timer:\tunable to start timer for $parsed\n$timer_results\n$usage" >&2
+                                          _cleanup_extglob
+                                          return 1
+                                        fi
+                                        echo "$timer_results" | grep '^job' | sed 's/^[^0-9]*\([0-9]\+\).*/\1/' > ~/.timer_data
+                                        total_days=$(($total_mins/1440))
+                                        day_string=
+                                        if [ $total_days -ne 0 ]; then
+                                          day_string="${total_days}d"
+                                        fi
+                                        total_hours=$((($total_mins%1440)/60))
+                                        hour_string=
+                                        if [ $total_hours -ne 0 ]; then
+                                          hour_string="${total_hours}h"
+                                        fi
+                                        total_mins=$(($total_mins%60))
+                                        min_string=
+                                        if [ $total_mins -ne 0 ]; then
+                                          min_string="${total_mins}m"
+                                        fi
+
+                                        echo "Started a $day_string$hour_string$min_string$sec_string timer (#$(cat ~/.timer_data))"
+                                        ;;
+    * )                                 
+                                        echo -e "timer:\tshouldn't have ever gotten to this point\n$usage" >&2
+                                        _cleanup_extglob
+                                        return 1
+  esac
+}
+
+######################################################## END timer ########################################################
+
+# moves a tmux window from SOURCE:INDEX to DESTINATION
+tmuxmw() {
+  usage='usage: tmuxmw SOURCE:(INDEX|WINDOW_NAME) DESTINATION[:INDEX|WINDOW_NAME]'
+
+  if [ $# -ne 2 ]; then 
+    echo "$usage" >&2
+    return 1
+  fi
+
+  err="$(tmux move-window -s "$1" -t "$2" 2>&1)"
+  if [ $? -ne 0 ]; then
+    echo -e "tmuxmw:\tunable to move window $1 to $2\ntmux:\t$err" >&2
+    return 1
+  fi
+}
+
+######################################################## END tmuxmw ########################################################
+
+# testtimer() {
+  # while IFS= read -r line; do
+    # echo "$line"
+    # if [ "$line" = "" ]; then
+      # echo ""
+      # continue
+    # fi
+    # echo "timer $line = $(timer $line | sed 's/,/\n/g')"
+    # echo "=================================="
+  # done < timerinput.txt
+# }
