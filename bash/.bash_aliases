@@ -2,6 +2,10 @@
 alias c='clear'
 alias vi='nvim'
 
+# custom bins
+alias tm='taskmanager'
+alias tt='tasktimer'
+
 # tmux
 alias tx='tmux'
 alias txa='tmux attach'
@@ -22,3 +26,10 @@ alias python='python3'
 # git
 alias gtaa='git add . && git status'
 alias gtc='git commit -m'
+
+# go build and teardown
+alias gob='source build.sh'
+alias gos='source teardown.sh'
+
+# fzf
+alias ff='fzf | xargs nvim'

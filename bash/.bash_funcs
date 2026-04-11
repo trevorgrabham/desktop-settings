@@ -1,3 +1,5 @@
+# added an _ to the timer func so i could use the go binary in ~/bin
+#
 # helper function
 # turns on extglob and registers the _cleanup_extglob function
 _setup_extglob() {
@@ -216,7 +218,7 @@ parsetime() {
 # uses the `at` deamon to set a timer.
 # 
 # default units are minutes if not specified
-timer() {
+_timer() {
   usage="usage:\ttimer [TIME] [--stop|-s]"
   command='notify-send "Timer done!" && paplay /usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga'
   prefix=
