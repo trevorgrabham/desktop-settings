@@ -1,3 +1,15 @@
+-- helper funcs
+local function fuzzy_find_from_project_root()
+  local cwd
+  local clients = vim.lsp.get_clients({ bufnr = 0 })
+  if #clients > 0 then
+    cwd = clients[1].config.root_dir
+  else
+    local root = vim.fs.find({ ".git", "package.json", "pyproject.toml", "go.mod" }, { upward = true })[1]
+    cwd = root and vim.fs.dirname(root) or vim.loop.cwd()
+  end
+  require("telescope.builtin").find_files({ cwd = cwd })
+end
 -- general files
 vim.keymap.set('i', 'jj', '<Esc>', { desc = "Escape" })
 vim.keymap.set('t', 'jj', [[<C-\><C-n>]], { desc = "Escape terminal mode" })
@@ -25,17 +37,15 @@ vim.keymap.set('n', '<C-v>', '"+p', { desc = "Paste from clipboard" })
 vim.keymap.set('i', '<C-v>', '<Esc>"+pa', { desc = "Paste from clipboard" })
 vim.keymap.set('n', '<leader>t', ':r !', { desc = "Insert terminal output at cursor" })
 -- telescope 
-vim.keymap.set('n', '<leader>ff', function ()
-  local cwd
-  local clients = vim.lsp.get_clients({ bufnr = 0 })
-  if #clients > 0 then
-    cwd = clients[1].config.root_dir
-  else
-    local root = vim.fs.find({ ".git", "package.json", "pyproject.toml", "go.mod" }, { upward = true })[1]
-    cwd = root and vim.fs.dirname(root) or vim.loop.cwd()
-  end
-  require("telescope.builtin").find_files({ cwd = cwd })
-end, { desc = "Find files" })
+vim.keymap.set('n', '<leader>ff', fuzzy_find_from_project_root, { desc = "Find files" })
+vim.keymap.set('n', '<leader>ffr', function ()
+  vim.cmd("vsplit")
+  fuzzy_find_from_project_root()
+end, { desc = "Fuzzy find in new vertical window split" })
+vim.keymap.set('n', '<leader>ffd', function ()
+  vim.cmd("split")
+  fuzzy_find_from_project_root()
+end, { desc = "Fuzzy find in new horizontal window split" })
 vim.keymap.set('n', '<leader>fg', ':Telescope live_grep<CR>', { desc = "Search in files" })
 vim.keymap.set('n', '<leader>fb', ':Telescope buffers<CR>', { desc = "List open buffers" })
 -- fzf
