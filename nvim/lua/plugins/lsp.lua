@@ -7,6 +7,8 @@ local servers = {
   "templ",
   "lua_ls",
   "emmet_language_server",
+  "ts_ls",
+  "eslint",
 }
 
 return {
@@ -79,6 +81,13 @@ return {
           opts.init_options = {
             includeLanguages = { templ = "html" },
           }
+        elseif server == "eslint" then
+          opts.on_attach = function (_, bufnr)
+            vim.api.nvim_create_autocmd("BufWritePre", {
+              buffer = bufnr,
+              command = "EslintFixAll",
+            })
+          end
         end
 
         vim.lsp.config(server, opts)
