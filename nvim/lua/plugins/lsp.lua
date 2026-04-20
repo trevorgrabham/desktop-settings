@@ -7,6 +7,7 @@ local servers = {
   "templ",
   "lua_ls",
   "emmet_language_server",
+  "sqls",
 }
 
 return {
