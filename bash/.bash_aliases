@@ -5,6 +5,7 @@ alias vi='nvim'
 # custom bins
 alias tm='taskmanager'
 alias tt='tasktimer'
+alias pom='coding-pomodoro'
 
 # tmux
 alias tx='tmux'
